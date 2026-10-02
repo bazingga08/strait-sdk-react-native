@@ -99,4 +99,15 @@ export {
   type CreateBridgeConfig,
   type KeyValueStore,
   type LinkEvent,
+  type LinkStart,
 } from './bridge.js';
+export {
+  AppStateTracker,
+  classifyUrl,
+  normalizeLinkHosts,
+  splitUrl,
+  browserScreenWidth,
+  RESUME_WINDOW_MS,
+  TRANSIENT_PAUSE_MS,
+  type ClassifiedUrl,
+} from './core.js';
