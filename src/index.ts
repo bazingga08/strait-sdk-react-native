@@ -89,3 +89,14 @@ export async function resolveDeferredLink(config: BridgeConfig): Promise<MatchRe
   }
   return post('/v1/match', { publishableKey: config.publishableKey, platform, ...device });
 }
+
+export {
+  createBridge,
+  createReactNativeRuntime,
+  fromPlayInstallReferrer,
+  type Bridge,
+  type BridgeRuntime,
+  type CreateBridgeConfig,
+  type KeyValueStore,
+  type LinkEvent,
+} from './bridge.js';
