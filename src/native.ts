@@ -6,9 +6,9 @@
 // @ts-expect-error optional peer dependency, present in React Native apps
 import { AppState, Dimensions, Linking, PixelRatio, Platform } from 'react-native';
 import { browserScreenWidth } from './adapter.js';
-import type { BridgeRuntime } from './bridge.js';
+import type { StraitRuntime } from './strait.js';
 
-export function nativeRuntime(opts: { installReferrer?: () => Promise<string | null> } = {}): BridgeRuntime {
+export function nativeRuntime(opts: { installReferrer?: () => Promise<string | null> } = {}): StraitRuntime {
   return {
     platform: () => (Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'other'),
     collectDevice: () => ({

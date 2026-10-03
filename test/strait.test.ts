@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createBridge, type BridgeRuntime, type KeyValueStore, type LinkEvent } from '../src/index.js';
+import { createStrait, type StraitRuntime, type KeyValueStore, type LinkEvent } from '../src/index.js';
 
 const PK = 'bk_pub_test_appowner01';
 const ENDPOINT = 'https://links.test';
@@ -10,7 +10,7 @@ function fakeRuntime(opts: { initialURL?: string | null; referrer?: string | nul
   let urlCb: ((u: string) => void) | null = null;
   let stateCb: ((s: 'active' | 'background' | 'inactive') => void) | null = null;
   let t = 1_000_000;
-  const runtime: BridgeRuntime = {
+  const runtime: StraitRuntime = {
     platform: () => 'android',
     collectDevice: () => device,
     getInstallReferrer: async () => opts.referrer ?? null,
@@ -47,10 +47,10 @@ function fakeEngine(routes: Record<string, unknown>) {
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 function start(rt: ReturnType<typeof fakeRuntime>, engine: ReturnType<typeof fakeEngine>, storage = memoryStore()) {
-  const bridge = createBridge({ publishableKey: PK, endpoint: ENDPOINT, runtime: rt.runtime, fetch: engine.fetch, storage });
+  const strait = createStrait({ publishableKey: PK, endpoint: ENDPOINT, runtime: rt.runtime, fetch: engine.fetch, storage });
   const events: LinkEvent[] = [];
-  bridge.onLink((e) => events.push(e));
-  return { bridge, events, storage };
+  strait.onLink((e) => events.push(e));
+  return { strait, events, storage };
 }
 
 const resolved = { '/v1/resolve': { matched: true, longUrl: 'https://shop.example/p/42?color=red', linkId: 'lnk_42', slug: 'sale' } };
@@ -59,8 +59,8 @@ describe('direct links', () => {
   it('app closed: a verified link resolves the short URL to its destination', async () => {
     const rt = fakeRuntime({ initialURL: 'https://links.test/sale' });
     const engine = fakeEngine(resolved);
-    const { bridge, events } = start(rt, engine);
-    await bridge.start();
+    const { strait, events } = start(rt, engine);
+    await strait.start();
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       kind: 'direct', route: 'app_link', appState: 'closed', matched: true,
@@ -74,8 +74,8 @@ describe('direct links', () => {
 
   it('app in background: classified as background', async () => {
     const rt = fakeRuntime();
-    const { bridge, events } = start(rt, fakeEngine(resolved));
-    await bridge.start();
+    const { strait, events } = start(rt, fakeEngine(resolved));
+    await strait.start();
     rt.setState('background');
     rt.advance(60_000);
     rt.setState('active');
@@ -87,8 +87,8 @@ describe('direct links', () => {
 
   it('app in background: link delivered before the app reports active (real Android order)', async () => {
     const rt = fakeRuntime();
-    const { bridge, events } = start(rt, fakeEngine(resolved));
-    await bridge.start();
+    const { strait, events } = start(rt, fakeEngine(resolved));
+    await strait.start();
     rt.setState('background');
     rt.advance(60_000);
     rt.tap('https://links.test/sale'); // onNewIntent fires before onResume
@@ -99,8 +99,8 @@ describe('direct links', () => {
 
   it('app on screen: the brief pause Android makes to deliver the link is not "background"', async () => {
     const rt = fakeRuntime();
-    const { bridge, events } = start(rt, fakeEngine(resolved));
-    await bridge.start();
+    const { strait, events } = start(rt, fakeEngine(resolved));
+    await strait.start();
     rt.advance(30_000);
     rt.setState('background'); // onPause caused by the incoming intent
     rt.advance(40);
@@ -113,8 +113,8 @@ describe('direct links', () => {
 
   it('app on screen: classified as foreground', async () => {
     const rt = fakeRuntime();
-    const { bridge, events } = start(rt, fakeEngine(resolved));
-    await bridge.start();
+    const { strait, events } = start(rt, fakeEngine(resolved));
+    await strait.start();
     rt.advance(30_000);
     rt.tap('https://links.test/sale');
     await flush(); await flush();
@@ -122,10 +122,10 @@ describe('direct links', () => {
   });
 
   it('browser hand-off (custom scheme) carries the destination, no network call', async () => {
-    const rt = fakeRuntime({ initialURL: 'bridgelink://shop.example/p/42?color=red' });
+    const rt = fakeRuntime({ initialURL: 'straitlink://shop.example/p/42?color=red' });
     const engine = fakeEngine({});
-    const { bridge, events } = start(rt, engine);
-    await bridge.start();
+    const { strait, events } = start(rt, engine);
+    await strait.start();
     expect(events[0]).toMatchObject({
       kind: 'direct', route: 'custom_scheme', appState: 'closed', matched: true,
       url: 'https://shop.example/p/42?color=red', path: '/p/42', params: { color: 'red' },
@@ -135,17 +135,17 @@ describe('direct links', () => {
 
   it('an expired short link is reported, not silently dropped', async () => {
     const rt = fakeRuntime({ initialURL: 'https://links.test/old' });
-    const { bridge, events } = start(rt, fakeEngine({ '/v1/resolve': { matched: false, reason: 'expired' } }));
-    await bridge.start();
+    const { strait, events } = start(rt, fakeEngine({ '/v1/resolve': { matched: false, reason: 'expired' } }));
+    await strait.start();
     expect(events[0]).toMatchObject({ kind: 'direct', route: 'app_link', matched: false, reason: 'expired' });
   });
 
   it('late subscribers still receive events that already happened', async () => {
-    const rt = fakeRuntime({ initialURL: 'bridgelink://shop.example/cart' });
-    const bridge = createBridge({ publishableKey: PK, endpoint: ENDPOINT, runtime: rt.runtime, fetch: fakeEngine({}).fetch, storage: memoryStore() });
-    await bridge.start();
+    const rt = fakeRuntime({ initialURL: 'straitlink://shop.example/cart' });
+    const strait = createStrait({ publishableKey: PK, endpoint: ENDPOINT, runtime: rt.runtime, fetch: fakeEngine({}).fetch, storage: memoryStore() });
+    await strait.start();
     const late: LinkEvent[] = [];
-    bridge.onLink((e) => late.push(e));
+    strait.onLink((e) => late.push(e));
     expect(late).toHaveLength(1);
     expect(late[0]!.path).toBe('/cart');
   });
@@ -155,12 +155,12 @@ describe('loading state (onLinkStart)', () => {
   it('announces a link before it resolves, with the same id as the result', async () => {
     const rt = fakeRuntime();
     const engine = fakeEngine(resolved);
-    const bridge = createBridge({ publishableKey: PK, endpoint: ENDPOINT, runtime: rt.runtime, fetch: engine.fetch, storage: memoryStore() });
+    const strait = createStrait({ publishableKey: PK, endpoint: ENDPOINT, runtime: rt.runtime, fetch: engine.fetch, storage: memoryStore() });
     const order: string[] = [];
     const ids: string[] = [];
-    bridge.onLinkStart((s) => { order.push(`start:${s.kind}:${s.appState}`); ids.push(s.id); });
-    bridge.onLink((e) => { order.push(`event:${e.kind}`); ids.push(e.id); });
-    await bridge.start();
+    strait.onLinkStart((s) => { order.push(`start:${s.kind}:${s.appState}`); ids.push(s.id); });
+    strait.onLink((e) => { order.push(`event:${e.kind}`); ids.push(e.id); });
+    await strait.start();
     rt.advance(30_000);
     rt.tap('https://links.test/sale');
     await flush(); await flush();
@@ -172,11 +172,11 @@ describe('loading state (onLinkStart)', () => {
 describe('subscriber isolation', () => {
   it("an app listener that throws doesn't produce a false 'network' event or stop others", async () => {
     const rt = fakeRuntime({ initialURL: 'https://links.test/sale' });
-    const bridge = createBridge({ publishableKey: PK, endpoint: ENDPOINT, runtime: rt.runtime, fetch: fakeEngine(resolved).fetch, storage: memoryStore() });
+    const strait = createStrait({ publishableKey: PK, endpoint: ENDPOINT, runtime: rt.runtime, fetch: fakeEngine(resolved).fetch, storage: memoryStore() });
     const seen: LinkEvent[] = [];
-    bridge.onLink(() => { throw new Error('app bug'); });
-    bridge.onLink((e) => seen.push(e));
-    await bridge.start();
+    strait.onLink(() => { throw new Error('app bug'); });
+    strait.onLink((e) => seen.push(e));
+    await strait.start();
     expect(seen).toHaveLength(1);
     expect(seen[0]).toMatchObject({ matched: true, url: 'https://shop.example/p/42?color=red' });
   });
@@ -186,10 +186,10 @@ describe('deferred links (installed after tapping)', () => {
   const referrerHit = { '/v1/referrer': { matched: true, longUrl: 'https://shop.example/promo/DIWALI20', linkId: 'lnk_7', matchMethod: 'install_referrer' } };
 
   it('first launch: Play install referrer → the link they tapped before installing', async () => {
-    const rt = fakeRuntime({ referrer: 'utm_source=google-play&bridge_link=lnk_7' });
+    const rt = fakeRuntime({ referrer: 'utm_source=google-play&strait_link=lnk_7' });
     const engine = fakeEngine(referrerHit);
-    const { bridge, events } = start(rt, engine);
-    await bridge.start();
+    const { strait, events } = start(rt, engine);
+    await strait.start();
     expect(events[0]).toMatchObject({
       kind: 'deferred', route: 'install_referrer', appState: 'closed', matched: true,
       url: 'https://shop.example/promo/DIWALI20', path: '/promo/DIWALI20', linkId: 'lnk_7',
@@ -199,29 +199,29 @@ describe('deferred links (installed after tapping)', () => {
 
   it('runs only once per install', async () => {
     const storage = memoryStore();
-    const rt = fakeRuntime({ referrer: 'bridge_link=lnk_7' });
-    await start(rt, fakeEngine(referrerHit), storage).bridge.start();
-    const second = start(fakeRuntime({ referrer: 'bridge_link=lnk_7' }), fakeEngine(referrerHit), storage);
-    await second.bridge.start();
+    const rt = fakeRuntime({ referrer: 'strait_link=lnk_7' });
+    await start(rt, fakeEngine(referrerHit), storage).strait.start();
+    const second = start(fakeRuntime({ referrer: 'strait_link=lnk_7' }), fakeEngine(referrerHit), storage);
+    await second.strait.start();
     expect(second.events.filter((e) => e.kind === 'deferred')).toHaveLength(0);
   });
 
   it('no referrer link → fingerprint match, reported as not matched when nothing found', async () => {
     const rt = fakeRuntime({ referrer: 'utm_source=google-play&utm_medium=organic' });
     const engine = fakeEngine({ '/v1/match': { matched: false, matchMethod: 'none' } });
-    const { bridge, events } = start(rt, engine);
-    await bridge.start();
+    const { strait, events } = start(rt, engine);
+    await strait.start();
     expect(events[0]).toMatchObject({ kind: 'deferred', route: 'fingerprint', matched: false });
     expect(engine.calls.find((c) => c.path === '/v1/match')?.body).toMatchObject({ publishableKey: PK, platform: 'android', ...device });
   });
 
   it('first launch that was itself opened by a link skips the deferred check', async () => {
     const storage = memoryStore();
-    const rt = fakeRuntime({ initialURL: 'bridgelink://shop.example/cart', referrer: 'bridge_link=lnk_7' });
-    const { bridge, events } = start(rt, fakeEngine(referrerHit), storage);
-    await bridge.start();
+    const rt = fakeRuntime({ initialURL: 'straitlink://shop.example/cart', referrer: 'strait_link=lnk_7' });
+    const { strait, events } = start(rt, fakeEngine(referrerHit), storage);
+    await strait.start();
     expect(events.map((e) => e.kind)).toEqual(['direct']);
-    expect(await storage.getItem('bridge.deferredChecked')).toBe('1');
+    expect(await storage.getItem('strait.deferredChecked')).toBe('1');
   });
 });
 
@@ -230,37 +230,37 @@ describe('fingerprint check + events', () => {
     const engine = fakeEngine({
       '/v1/debug/fingerprint': { extHash: 'abc', coreHash: 'def', inputs: {} },
     });
-    const { bridge } = start(fakeRuntime(), engine);
-    await bridge.reportFingerprint();
+    const { strait } = start(fakeRuntime(), engine);
+    await strait.reportFingerprint();
     const post = engine.calls.find((c) => c.method === 'POST' && c.path === '/v1/debug/fingerprint');
     expect(post?.body).toMatchObject({ publishableKey: PK, origin: 'app', ...device });
-    await bridge.compareFingerprint();
+    await strait.compareFingerprint();
     expect(engine.calls.some((c) => c.method === 'GET' && c.path === '/v1/debug/fingerprint')).toBe(true);
   });
 
   it('trackEvent sends the publishable key', async () => {
     const engine = fakeEngine({ '/v1/event': { ok: true } });
-    const { bridge } = start(fakeRuntime(), engine);
-    expect(await bridge.trackEvent('purchase', { value: 49.99, currency: 'USD', linkId: 'lnk_42' })).toBe(true);
+    const { strait } = start(fakeRuntime(), engine);
+    expect(await strait.trackEvent('purchase', { value: 49.99, currency: 'USD', linkId: 'lnk_42' })).toBe(true);
     expect(engine.calls.at(-1)?.body).toMatchObject({ publishableKey: PK, event: 'purchase', value: 49.99, linkId: 'lnk_42' });
   });
 });
 
-import { splitUrl } from '../src/bridge.js';
+import { splitUrl } from '../src/strait.js';
 describe('splitUrl (no reliance on React Native URL)', () => {
   it('splits https and custom-scheme URLs', () => {
     expect(splitUrl('https://Links.Test/sale?utm_source=sms&x=a%20b')).toEqual({
       scheme: 'https', host: 'links.test', path: '/sale', params: { utm_source: 'sms', x: 'a b' },
     });
-    expect(splitUrl('bridgelink://shop.example/p/42#frag')).toEqual({
-      scheme: 'bridgelink', host: 'shop.example', path: '/p/42', params: {},
+    expect(splitUrl('straitlink://shop.example/p/42#frag')).toEqual({
+      scheme: 'straitlink', host: 'shop.example', path: '/p/42', params: {},
     });
     expect(splitUrl('https://links.test')?.path).toBe('/');
     expect(splitUrl('not a url')).toBeNull();
   });
 });
 
-import { browserScreenWidth } from '../src/bridge.js';
+import { browserScreenWidth } from '../src/strait.js';
 describe('browserScreenWidth (match what the browser reports at the tap)', () => {
   it('rounds fractional widths up, like Chrome (1080px @ 2.625 → 412)', () => {
     expect(browserScreenWidth(1080 / 2.625)).toBe(412);

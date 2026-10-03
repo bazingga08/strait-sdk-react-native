@@ -5,8 +5,8 @@ import {
   classifyUrl,
   newOpenId,
   normalizeLinkHosts,
-  parseBridgeClick,
-  parseBridgeLink,
+  parseStraitClick,
+  parseStraitLink,
   pruneOpenQueue,
   shouldRetryReport,
   splitUrl,
@@ -18,7 +18,7 @@ export { browserScreenWidth, splitUrl } from './core.js';
  * Everything the SDK needs from the phone, behind one interface so the logic
  * runs (and is tested) in plain Node. `createReactNativeRuntime` is the real one.
  */
-export interface BridgeRuntime {
+export interface StraitRuntime {
   platform(): 'ios' | 'android' | 'other';
   collectDevice(): DeviceFields;
   /** Android Play Install Referrer string, or null. */
@@ -38,7 +38,7 @@ export interface KeyValueStore {
 }
 
 export interface LinkEvent {
-  /** Unique per open; also the id Bridge records this open under. */
+  /** Unique per open; also the id Strait records this open under. */
   id: string;
   /** direct = the app was opened by a link; deferred = link tapped before install. */
   kind: 'direct' | 'deferred';
@@ -78,10 +78,10 @@ export interface LinkStart {
   at: number;
 }
 
-export interface CreateBridgeConfig {
+export interface CreateStraitConfig {
   /** Workspace publishable key (bk_pub_live_…), Dashboard → Get started. */
   publishableKey: string;
-  /** Your Bridge link host, e.g. https://go.yourbrand.com */
+  /** Your Strait link host, e.g. https://go.yourbrand.com */
   endpoint: string;
   /** Extra hosts that serve your short links (custom domains). */
   linkHosts?: string[];
@@ -90,11 +90,11 @@ export interface CreateBridgeConfig {
   /** Android: returns the Play Install Referrer. See `fromPlayInstallReferrer`. */
   installReferrer?: () => Promise<string | null>;
   /** Tests / custom platforms. */
-  runtime?: BridgeRuntime;
+  runtime?: StraitRuntime;
   fetch?: typeof fetch;
 }
 
-export interface Bridge {
+export interface Strait {
   /** Reads the launch link, listens for new ones, runs the deferred check once. */
   start(): Promise<void>;
   /** Every link event, including ones that happened before you subscribed. */
@@ -135,9 +135,9 @@ interface OpenReport {
   at: number;
 }
 
-const DEFERRED_FLAG = 'bridge.deferredChecked';
-const QUEUE_KEY = 'bridge.pendingOpens';
-export function createBridge(config: CreateBridgeConfig): Bridge {
+const DEFERRED_FLAG = 'strait.deferredChecked';
+const QUEUE_KEY = 'strait.pendingOpens';
+export function createStrait(config: CreateStraitConfig): Strait {
   const doFetch = config.fetch ?? globalThis.fetch;
   const base = config.endpoint.replace(/\/+$/, '');
   const linkHosts = normalizeLinkHosts(base, config.linkHosts);
@@ -145,11 +145,11 @@ export function createBridge(config: CreateBridgeConfig): Bridge {
   const events: LinkEvent[] = [];
   const listeners = new Set<(e: LinkEvent) => void>();
   const unsubs: Array<() => void> = [];
-  let runtime: BridgeRuntime | undefined = config.runtime;
+  let runtime: StraitRuntime | undefined = config.runtime;
   const tracker = new AppStateTracker();
   const startListeners = new Set<(s: LinkStart) => void>();
 
-  const rt = async (): Promise<BridgeRuntime> =>
+  const rt = async (): Promise<StraitRuntime> =>
     (runtime ??= await createReactNativeRuntime({ installReferrer: config.installReferrer }));
 
   const newId = (at: number) => newOpenId(at);
@@ -159,7 +159,7 @@ export function createBridge(config: CreateBridgeConfig): Bridge {
     try {
       cb(v);
     } catch (err) {
-      console.error('[bridge] link listener threw:', err);
+      console.error('[strait] link listener threw:', err);
     }
   };
   const announce = (s: LinkStart) => {
@@ -302,9 +302,9 @@ export function createBridge(config: CreateBridgeConfig): Bridge {
     try {
       if (r.platform() === 'android') {
         const referrer = await r.getInstallReferrer().catch(() => null);
-        const linkId = parseBridgeLink(referrer);
+        const linkId = parseStraitLink(referrer);
         if (linkId) {
-          const clickId = parseBridgeClick(referrer) ?? undefined;
+          const clickId = parseStraitClick(referrer) ?? undefined;
           const { json } = await answered('/v1/referrer', {
             publishableKey: config.publishableKey, linkId, clickId, platform: 'android', ...tag,
           });
@@ -398,7 +398,7 @@ export function createBridge(config: CreateBridgeConfig): Bridge {
 /**
  * Wrap `react-native-play-install-referrer` for `installReferrer`:
  *   import { PlayInstallReferrer } from 'react-native-play-install-referrer';
- *   createBridge({ …, installReferrer: fromPlayInstallReferrer(PlayInstallReferrer) })
+ *   createStrait({ …, installReferrer: fromPlayInstallReferrer(PlayInstallReferrer) })
  */
 export function fromPlayInstallReferrer(mod: {
   getInstallReferrerInfo(cb: (info: { installReferrer?: string } | null, error: unknown) => void): void;
@@ -416,7 +416,7 @@ export function fromPlayInstallReferrer(mod: {
 /** The real runtime, backed by React Native's Linking, AppState and Dimensions. */
 export async function createReactNativeRuntime(
   opts: { installReferrer?: () => Promise<string | null> } = {},
-): Promise<BridgeRuntime> {
+): Promise<StraitRuntime> {
   // @ts-expect-error optional peer dependency, resolved at app runtime
   const rn = await import('react-native');
   const { Linking, AppState, Dimensions, PixelRatio, Platform } = rn;

@@ -1,5 +1,5 @@
 /**
- * Pure, platform-free link logic. Every Bridge SDK implements these exactly;
+ * Pure, platform-free link logic. Every Strait SDK implements these exactly;
  * shared-spec/conformance-vectors.json is the cross-language contract
  * (see shared-spec/SDK-CONTRACT.md).
  */
@@ -67,17 +67,17 @@ export function normalizeLinkHosts(endpoint: string, linkHosts: string[] = []): 
   return out;
 }
 
-/** The bridge_link id inside a Play Install Referrer string, or null. */
-export function parseBridgeLink(referrer: string | null | undefined): string | null {
-  return referrerParam(referrer, 'bridge_link');
+/** The strait_link id inside a Play Install Referrer string, or null. */
+export function parseStraitLink(referrer: string | null | undefined): string | null {
+  return referrerParam(referrer, 'strait_link');
 }
 
 /**
- * The tap id (bridge_click) inside a Play Install Referrer string, or null.
+ * The tap id (strait_click) inside a Play Install Referrer string, or null.
  * Joins the install to the exact tap that sent the user to the store.
  */
-export function parseBridgeClick(referrer: string | null | undefined): string | null {
-  const v = referrerParam(referrer, 'bridge_click');
+export function parseStraitClick(referrer: string | null | undefined): string | null {
+  const v = referrerParam(referrer, 'strait_click');
   return v && CLICK_ID.test(v) ? v : null;
 }
 
@@ -92,11 +92,11 @@ function referrerParam(referrer: string | null | undefined, key: string): string
   return null;
 }
 
-/** A tap id as Bridge issues it (uuid); anything else is ignored. */
+/** A tap id as Strait issues it (uuid); anything else is ignored. */
 const CLICK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Remove every `bridge_click` parameter from a URL's query, keeping the rest
+ * Remove every `strait_click` parameter from a URL's query, keeping the rest
  * of the URL byte-for-byte (fragment included). Returns the cleaned URL and
  * the tap id (null when absent or malformed). The app never sees the tap id.
  */
@@ -113,7 +113,7 @@ export function takeClickId(raw: string): { url: string; clickId: string | null 
     .split('&')
     .filter((pair) => {
       const i = pair.indexOf('=');
-      if (decode(i < 0 ? pair : pair.slice(0, i)) !== 'bridge_click') return true;
+      if (decode(i < 0 ? pair : pair.slice(0, i)) !== 'strait_click') return true;
       const v = decode(i < 0 ? '' : pair.slice(i + 1));
       if (CLICK_ID.test(v)) clickId = v.toLowerCase();
       return false;
@@ -130,17 +130,17 @@ export type ClassifiedUrl =
       url: string;
       path: string;
       params: Record<string, string>;
-      /** Tap id from a Bridge hand-off (removed from url/params), else null. */
+      /** Tap id from a Strait hand-off (removed from url/params), else null. */
       clickId: string | null;
     }
   | null;
 
 /**
  * What a URL handed to the app means:
- * - https on a Bridge link host → a short link; ask /v1/resolve for the destination.
+ * - https on a Strait link host → a short link; ask /v1/resolve for the destination.
  * - other https (a verified link on the customer's own site) → it IS the destination.
  * - yourapp://host/path (browser hand-off) → destination https://host/path.
- * A `bridge_click` tap id is removed from the destination and returned apart.
+ * A `strait_click` tap id is removed from the destination and returned apart.
  * Returns null for anything that isn't a URL.
  */
 export function classifyUrl(raw: string, linkHosts: string[]): ClassifiedUrl {

@@ -1,16 +1,16 @@
-# @bridge/sdk-react-native
+# @strait/sdk-react-native
 
 Deferred deep linking for React Native — the user taps your link, installs the
 app, and lands on the right screen. No clipboard paste banner.
 
-Part of [Bridge](../). The match signature stays in lockstep with the server and
+Part of [Strait](../). The match signature stays in lockstep with the server and
 every other SDK via [`shared-spec`](../shared-spec) golden vectors (run in CI here).
 
 ## Install
 
 <!-- brand:install -->
 ```sh
-npm install @bridge/sdk-react-native
+npm install @strait/sdk-react-native
 ```
 <!-- /brand:install -->
 
@@ -22,11 +22,11 @@ module (optional but recommended) — see "Android" below.
 Call once after first launch and route to the result:
 
 ```ts
-import { resolveDeferredLink } from '@bridge/sdk-react-native';
+import { resolveDeferredLink } from '@strait/sdk-react-native';
 
 const result = await resolveDeferredLink({
   publishableKey: 'bk_pub_live_…',    // Dashboard → Get started (safe in apps; never the secret key)
-  endpoint: 'https://go.yourbrand.com', // your Bridge link host
+  endpoint: 'https://go.yourbrand.com', // your Strait link host
 });
 
 if (result.matched && result.longUrl) {
@@ -42,27 +42,27 @@ if (result.matched && result.longUrl) {
 ```ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PlayInstallReferrer } from 'react-native-play-install-referrer';
-import { createBridge, fromPlayInstallReferrer } from '@bridge/sdk-react-native';
+import { createStrait, fromPlayInstallReferrer } from '@strait/sdk-react-native';
 
-const bridge = createBridge({
+const strait = createStrait({
   publishableKey: 'bk_pub_live_…',
   endpoint: 'https://go.yourbrand.com',
   storage: AsyncStorage,                                   // required for reliable analytics
   installReferrer: fromPlayInstallReferrer(PlayInstallReferrer),
 });
-bridge.onLinkStart(() => showLoading());
-bridge.onLink((e) => e.matched && e.path && navigate(e.path, e.params));
-bridge.start();
+strait.onLinkStart(() => showLoading());
+strait.onLink((e) => e.matched && e.path && navigate(e.path, e.params));
+strait.start();
 ```
 
-### What Bridge records automatically (no extra code)
+### What Strait records automatically (no extra code)
 
 Every time a link opens the app, the SDK reports it once (contract B14):
 
 | How the app opened | Reported via | Joined to |
 |---|---|---|
 | Verified link tapped in WhatsApp, Gmail, Messages… | `/v1/resolve` (the lookup is the report) | the link; also counted as a tap |
-| Browser handed off to the app (`yourapp://…`) | `/v1/open` | the exact tap (`bridge_click`, removed before your app sees the URL) |
+| Browser handed off to the app (`yourapp://…`) | `/v1/open` | the exact tap (`strait_click`, removed before your app sees the URL) |
 | First open after a Play install | `/v1/referrer` | the exact tap that sent the user to the store |
 | First open after an App Store install | `/v1/match` | the matched tap |
 | Your own https links | `/v1/open` | host + path only (never the query) |
@@ -80,7 +80,7 @@ retried on the next launch.
 
 | Platform | Method | Precision |
 |----------|--------|-----------|
-| Android  | Play Install Referrer (`bridge_link`) | deterministic (`install_referrer`) |
+| Android  | Play Install Referrer (`strait_link`) | deterministic (`install_referrer`) |
 | Android (no referrer) / iOS | server-side device fingerprint | probabilistic (`exact_ext` → `exact_core`) |
 
 The SDK collects only coarse, privacy-clean device fields (screen width, pixel
@@ -90,7 +90,7 @@ never a cross-app identity.
 
 ### Android: enabling the deterministic path
 
-Provide a native module named `BridgeInstallReferrer` exposing
+Provide a native module named `StraitInstallReferrer` exposing
 `getInstallReferrer(): Promise<string>` (thin wrapper over Google's
 `InstallReferrerClient`). When present, Android installs resolve exactly; without
 it, Android falls back to the fingerprint path automatically.

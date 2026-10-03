@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  AppStateTracker, browserScreenWidth, classifyUrl, normalizeLinkHosts, parseBridgeClick, parseBridgeLink,
+  AppStateTracker, browserScreenWidth, classifyUrl, normalizeLinkHosts, parseStraitClick, parseStraitLink,
   pruneOpenQueue, shouldRetryReport, splitUrl, takeClickId,
   OPEN_QUEUE_MAX, OPEN_QUEUE_MAX_AGE_MS, RESUME_WINDOW_MS, TRANSIENT_PAUSE_MS,
 } from '../src/core.js';
@@ -19,11 +19,11 @@ describe('conformance vectors', () => {
   it.each(v.splitUrl)('splitUrl($input)', ({ input, expected }) => {
     expect(splitUrl(input)).toEqual(expected);
   });
-  it.each(v.referrer)('parseBridgeLink($input)', ({ input, expected }) => {
-    expect(parseBridgeLink(input)).toBe(expected);
+  it.each(v.referrer)('parseStraitLink($input)', ({ input, expected }) => {
+    expect(parseStraitLink(input)).toBe(expected);
   });
-  it.each(v.referrerClick)('parseBridgeClick($input)', ({ input, expected }) => {
-    expect(parseBridgeClick(input)).toBe(expected);
+  it.each(v.referrerClick)('parseStraitClick($input)', ({ input, expected }) => {
+    expect(parseStraitClick(input)).toBe(expected);
   });
   it.each(v.takeClickId)('takeClickId($input)', ({ input, expected }) => {
     expect(takeClickId(input)).toEqual(expected);

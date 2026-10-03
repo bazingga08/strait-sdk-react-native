@@ -1,20 +1,20 @@
 import {
   createReactNativeAdapter,
-  parseBridgeLink,
+  parseStraitLink,
   type NativeAdapter,
 } from './adapter.js';
 
 export type { DeviceFields, NativeAdapter } from './adapter.js';
-export { parseBridgeLink } from './adapter.js';
+export { parseStraitLink } from './adapter.js';
 export { computeSignature, h32 } from './signature.js';
 
-export interface BridgeConfig {
+export interface StraitConfig {
   /**
    * Your workspace's publishable key (`bk_pub_live_…`), from Dashboard →
    * Get started. Safe to ship in apps/websites — never use the secret key here.
    */
   publishableKey: string;
-  /** The Bridge link host, e.g. https://go.yourbrand.com. */
+  /** The Strait link host, e.g. https://go.yourbrand.com. */
   endpoint: string;
   /** Override the native adapter (tests / custom platforms). */
   adapter?: NativeAdapter;
@@ -39,7 +39,7 @@ const NONE: MatchResult = { matched: false, matchMethod: 'none' };
  *   • otherwise → fingerprint match via /v1/match (probabilistic).
  * Never throws — returns a no-match result on any error.
  */
-export async function resolveDeferredLink(config: BridgeConfig): Promise<MatchResult> {
+export async function resolveDeferredLink(config: StraitConfig): Promise<MatchResult> {
   const doFetch = config.fetch ?? globalThis.fetch;
   let adapter: NativeAdapter;
   try {
@@ -69,7 +69,7 @@ export async function resolveDeferredLink(config: BridgeConfig): Promise<MatchRe
   if (platform === 'android') {
     let linkId: string | null = null;
     try {
-      linkId = parseBridgeLink(await adapter.getInstallReferrer());
+      linkId = parseStraitLink(await adapter.getInstallReferrer());
     } catch {
       linkId = null;
     }
@@ -91,23 +91,23 @@ export async function resolveDeferredLink(config: BridgeConfig): Promise<MatchRe
 }
 
 export {
-  createBridge,
+  createStrait,
   createReactNativeRuntime,
   fromPlayInstallReferrer,
-  type Bridge,
-  type BridgeRuntime,
-  type CreateBridgeConfig,
+  type Strait,
+  type StraitRuntime,
+  type CreateStraitConfig,
   type KeyValueStore,
   type LinkEvent,
   type LinkStart,
-} from './bridge.js';
+} from './strait.js';
 export {
   AppStateTracker,
   classifyUrl,
   normalizeLinkHosts,
   splitUrl,
   browserScreenWidth,
-  parseBridgeClick,
+  parseStraitClick,
   takeClickId,
   newOpenId,
   pruneOpenQueue,

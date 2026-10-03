@@ -16,7 +16,7 @@ export interface NativeAdapter {
   collectDevice(): DeviceFields;
   /**
    * Android only: the Play Install Referrer string (e.g.
-   * "bridge_link=lnk_123&utm_source=..."), or null if unavailable / iOS.
+   * "strait_link=lnk_123&utm_source=..."), or null if unavailable / iOS.
    */
   getInstallReferrer(): Promise<string | null>;
 }
@@ -45,7 +45,7 @@ export async function createReactNativeAdapter(): Promise<NativeAdapter> {
     },
     async getInstallReferrer() {
       // Optional native module (react-native-play-install-referrer or our own).
-      const mod = NativeModules?.BridgeInstallReferrer;
+      const mod = NativeModules?.StraitInstallReferrer;
       if (Platform.OS !== 'android' || !mod?.getInstallReferrer) return null;
       try {
         return await mod.getInstallReferrer();
@@ -78,4 +78,4 @@ function resolveTimezone(): string {
   }
 }
 
-export { browserScreenWidth, parseBridgeLink } from './core.js';
+export { browserScreenWidth, parseStraitLink } from './core.js';

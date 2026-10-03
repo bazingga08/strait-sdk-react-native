@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { parseBridgeLink, resolveDeferredLink } from '../src/index.js';
+import { parseStraitLink, resolveDeferredLink } from '../src/index.js';
 import type { NativeAdapter } from '../src/adapter.js';
 
 const device = {
@@ -24,18 +24,18 @@ function jsonFetch(payload: unknown, ok = true) {
   return vi.fn(async () => ({ ok, json: async () => payload })) as unknown as typeof fetch;
 }
 
-describe('parseBridgeLink', () => {
-  it('extracts bridge_link from a Play referrer', () => {
-    expect(parseBridgeLink('utm_source=x&bridge_link=lnk_42&y=1')).toBe('lnk_42');
+describe('parseStraitLink', () => {
+  it('extracts strait_link from a Play referrer', () => {
+    expect(parseStraitLink('utm_source=x&strait_link=lnk_42&y=1')).toBe('lnk_42');
   });
   it('returns null when absent or empty', () => {
-    expect(parseBridgeLink('utm_source=x')).toBeNull();
-    expect(parseBridgeLink(null)).toBeNull();
+    expect(parseStraitLink('utm_source=x')).toBeNull();
+    expect(parseStraitLink(null)).toBeNull();
   });
 });
 
 describe('resolveDeferredLink — Android deterministic path', () => {
-  it('uses /v1/referrer when the install referrer carries a bridge_link', async () => {
+  it('uses /v1/referrer when the install referrer carries a strait_link', async () => {
     const fetchMock = jsonFetch({
       matched: true,
       longUrl: 'https://app/x',
@@ -44,7 +44,7 @@ describe('resolveDeferredLink — Android deterministic path', () => {
     const res = await resolveDeferredLink({
       publishableKey: 'bk_pub_test_ten1key01',
       endpoint: 'https://go.example.com/',
-      adapter: adapterFor('android', 'bridge_link=lnk_42'),
+      adapter: adapterFor('android', 'strait_link=lnk_42'),
       fetch: fetchMock,
     });
     expect(res.matchMethod).toBe('install_referrer');
@@ -57,7 +57,7 @@ describe('resolveDeferredLink — Android deterministic path', () => {
     });
   });
 
-  it('falls back to /v1/match when the referrer has no bridge_link', async () => {
+  it('falls back to /v1/match when the referrer has no strait_link', async () => {
     const fetchMock = jsonFetch({ matched: false, matchMethod: 'none' });
     await resolveDeferredLink({
       publishableKey: 'bk_pub_test_ten1key01',
@@ -78,7 +78,7 @@ describe('resolveDeferredLink — Android deterministic path', () => {
     const res = await resolveDeferredLink({
       publishableKey: 'bk_pub_test_ten1key01',
       endpoint: 'https://go.example.com',
-      adapter: adapterFor('android', 'bridge_link=lnk_x'),
+      adapter: adapterFor('android', 'strait_link=lnk_x'),
       fetch: fetchMock,
     });
     expect(res.matchMethod).toBe('exact_ext');

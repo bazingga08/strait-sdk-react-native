@@ -1,5 +1,5 @@
 /**
- * Bridge deferred-match signature — CANONICAL reference implementation.
+ * Strait deferred-match signature — CANONICAL reference implementation.
  *
  * This file generates test-vectors.json. Every SDK (web, RN, Flutter) and the
  * server port this logic and assert against those vectors. See RECIPE.md.
