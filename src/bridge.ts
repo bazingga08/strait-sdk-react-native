@@ -81,7 +81,7 @@ export interface LinkStart {
 export interface CreateBridgeConfig {
   /** Workspace publishable key (bk_pub_live_…), Dashboard → Get started. */
   publishableKey: string;
-  /** Your Bridge link host, e.g. https://bridge-redirect-engine.onrender.com */
+  /** Your Bridge link host, e.g. https://go.yourbrand.com */
   endpoint: string;
   /** Extra hosts that serve your short links (custom domains). */
   linkHosts?: string[];
